@@ -68,6 +68,41 @@ class Database {
     }
   }
 
+  // MÉTODO NUEVO: executeQuery para consultas SQL directas
+  async executeQuery(query, parameters = {}) {
+    try {
+      const pool = await this.connect();
+      const request = pool.request();
+
+      // Agregar parámetros a la consulta
+      Object.keys(parameters).forEach(key => {
+        // Detectar el tipo de dato automáticamente
+        const value = parameters[key];
+        if (typeof value === 'number') {
+          if (Number.isInteger(value)) {
+            request.input(key, sql.Int, value);
+          } else {
+            request.input(key, sql.Float, value);
+          }
+        } else if (typeof value === 'boolean') {
+          request.input(key, sql.Bit, value);
+        } else if (value instanceof Date) {
+          request.input(key, sql.DateTime, value);
+        } else {
+          request.input(key, sql.NVarChar, value);
+        }
+      });
+
+      const result = await request.query(query);
+      return result;
+    } catch (error) {
+      console.error(`❌ Error ejecutando query:`, error);
+      console.error(`❌ Query: ${query}`);
+      console.error(`❌ Parámetros:`, parameters);
+      throw error;
+    }
+  }
+
   async close() {
     try {
       if (this.pool) {
